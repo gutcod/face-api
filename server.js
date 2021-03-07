@@ -3,46 +3,46 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
 const knex = require("knex");
+const morgan = require("morgan");
+
 const register = require("./controllers/register");
 const signin = require("./controllers/signin");
 const profile = require("./controllers/profile");
 const image = require("./controllers/image");
+const auth = require("./controllers/authorization.js");
 
 const db = knex({
   client: "pg",
-  connection: {
-    host: "127.0.0.1",
-    user: "andreigutan",
-    password: "",
-    database: "smartbrain",
-  },
+  connection: process.env.POSTGRES_URI,
 });
 
 const app = express();
 
 app.use(bodyParser.json());
+app.use(morgan("combined"));
 app.use(cors());
 
 app.get("/", (req, res) => {
   res.send("it is working");
 });
 
-app.post("/signin", (req, res) => {
-  signin.handlerSignIn(req, res, db, bcrypt);
-});
+app.post("/signin", signin.signinAuthentication(db, bcrypt));
 
 app.post("/register", (req, res) => {
   register.handleRegister(req, res, db, bcrypt);
 });
 
-app.get("/profile/:id", (req, res) => {
+app.get("/profile/:id", auth.requireAuth, (req, res) => {
   profile.handleProfile(req, res, db);
 });
+app.post("/profile/:id", auth.requireAuth, (req, res) => {
+  profile.handleProfileUpdate(req, res, db);
+});
 
-app.put("/image", (req, res) => {
+app.put("/image", auth.requireAuth, (req, res) => {
   image.handleImage(req, res, db);
 });
-app.post("/imageUrl", (req, res) => {
+app.post("/imageUrl", auth.requireAuth, (req, res) => {
   image.handleApiCall(req, res);
 });
 
